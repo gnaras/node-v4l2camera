@@ -7,20 +7,9 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <turbojpeg.h>
 #include <jpeglib.h>
 
 namespace {
-
-  auto tjYUYVtoJPEG(const uint8_t* input, const int width, const int height) {
-    tjhandle handle = tjInitCompress();
-    unsigned char* dstBuf = nullptr;
-    unsigned long dstSize = 0;
-    tjCompressFromYUV(handle, input, width, 4, height, TJSAMP_444, &dstBuf, &dstSize,
-                          70, TJFLAG_FASTDCT);
-    tjDestroy(handle);
-    return std::make_pair(dstSize, dstBuf);
-  }
 
   auto compressYUYVtoJPEG(const uint8_t* input, const int width, const int height) {
     struct jpeg_compress_struct cinfo;
@@ -28,8 +17,8 @@ namespace {
     //JSAMPROW row_ptr[1];
     //int row_stride;
 
-    uint8_t* outbuffer = NULL;
-    uint64_t outlen = 0;
+    unsigned char* outbuffer = NULL;
+    unsigned long outlen = 0;
 
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_compress(&cinfo);

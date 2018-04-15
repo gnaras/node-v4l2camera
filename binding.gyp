@@ -11,21 +11,21 @@
             [ 'target_arch == "x64"', {
                 "link_settings": {
                     "libraries": [
-                        "/opt/libjpeg-turbo/lib64/libturbojpeg.a"
+                        "/opt/libjpeg-turbo/lib64/libjpeg.a"
                     ]
                 },
             }],
             [ 'target_arch == "ia32"', {
                 "link_settings": {
                     "libraries": [
-                        "/opt/libjpeg-turbo/lib32/libturbojpeg.a"
+                        "/opt/libjpeg-turbo/lib32/libjpeg.a"
                     ]
                 },
             }],
             [ 'target_arch == "arm"', {
                 "link_settings": {
                     "libraries": [
-                        "/opt/libjpeg-turbo/lib32/libturbojpeg.a"
+                        "/opt/libjpeg-turbo/lib32/libjpeg.a"
                     ]
                 },
             }],
