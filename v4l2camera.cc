@@ -2,15 +2,73 @@
 
 #include <nan.h>
 #include <errno.h>
-
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
-
+#include <turbojpeg.h>
+#include <jpeglib.h>
 
 namespace {
-  
+
+  auto tjYUYVtoJPEG(const uint8_t* input, const int width, const int height) {
+    tjhandle handle = tjInitCompress();
+    unsigned char* dstBuf = nullptr;
+    unsigned long dstSize = 0;
+    tjCompressFromYUV(handle, input, width, 4, height, TJSAMP_444, &dstBuf, &dstSize,
+                          70, TJFLAG_FASTDCT);
+    tjDestroy(handle);
+    return std::make_pair(dstSize, dstBuf);
+  }
+
+  auto compressYUYVtoJPEG(const uint8_t* input, const int width, const int height) {
+    struct jpeg_compress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+    //JSAMPROW row_ptr[1];
+    //int row_stride;
+
+    uint8_t* outbuffer = NULL;
+    uint64_t outlen = 0;
+
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_compress(&cinfo);
+    jpeg_mem_dest(&cinfo, &outbuffer, &outlen);
+
+    // jrow is a libjpeg row of samples array of 1 row pointer
+    cinfo.image_width = width & -1;
+    cinfo.image_height = height & -1;
+    cinfo.input_components = 3;
+    cinfo.in_color_space = JCS_YCbCr; //libJPEG expects YUV 3bytes, 24bit
+
+    jpeg_set_defaults(&cinfo);
+    jpeg_set_quality(&cinfo, 92, TRUE);
+    jpeg_start_compress(&cinfo, TRUE);
+
+    std::vector<uint8_t> tmprowbuf(width * 3);
+
+    JSAMPROW row_pointer[1];
+    row_pointer[0] = &tmprowbuf[0];
+    while (cinfo.next_scanline < cinfo.image_height) {
+        unsigned i, j;
+        unsigned offset = cinfo.next_scanline * cinfo.image_width * 2; //offset to the correct row
+        for (i = 0, j = 0; i < cinfo.image_width * 2; i += 4, j += 6) { //input strides by 4 bytes, output strides by 6 (2 pixels)
+            tmprowbuf[j + 0] = input[offset + i + 0]; // Y (unique to this pixel)
+            tmprowbuf[j + 1] = input[offset + i + 1]; // U (shared between pixels)
+            tmprowbuf[j + 2] = input[offset + i + 3]; // V (shared between pixels)
+            tmprowbuf[j + 3] = input[offset + i + 2]; // Y (unique to this pixel)
+            tmprowbuf[j + 4] = input[offset + i + 1]; // U (shared between pixels)
+            tmprowbuf[j + 5] = input[offset + i + 3]; // V (shared between pixels)
+        }
+        jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+
+    jpeg_finish_compress(&cinfo);
+    jpeg_destroy_compress(&cinfo);
+
+    return std::make_pair(outlen, outbuffer);
+  }
+
   struct CallbackData {
     Nan::Persistent<v8::Object> thisObj;
     std::unique_ptr<Nan::Callback> callback;
@@ -18,7 +76,7 @@ namespace {
   
   class Camera : public Nan::ObjectWrap {
   public:
-    static  NAN_MODULE_INIT(Init);
+    static NAN_MODULE_INIT(Init);
   private:
     static NAN_METHOD(New);
     static NAN_METHOD(Start);
@@ -26,6 +84,7 @@ namespace {
     static NAN_METHOD(Capture);
     static NAN_METHOD(FrameRaw);
     static NAN_METHOD(FrameYUYVToRGB);
+    static NAN_METHOD(FrameYUYVToJPEG);
     static NAN_METHOD(ConfigGet);
     static NAN_METHOD(ConfigSet);
     static NAN_METHOD(ControlGet);
@@ -337,7 +396,7 @@ namespace {
     auto array = v8::Uint8Array::New(buf, 0, size);
     info.GetReturnValue().Set(array);
   }
-  
+
   NAN_METHOD(Camera::FrameYUYVToRGB) {
     // TBD: check the current format as YUYV
     const auto camera = Nan::ObjectWrap::Unwrap<Camera>(info.Holder())->camera;
@@ -345,6 +404,18 @@ namespace {
     const auto size = camera->width * camera->height * 3;
     const auto flag = v8::ArrayBufferCreationMode::kInternalized;
     auto buf = v8::ArrayBuffer::New(info.GetIsolate(), rgb, size, flag);
+    auto array = v8::Uint8Array::New(buf, 0, size);
+    info.GetReturnValue().Set(array);
+  }
+
+  NAN_METHOD(Camera::FrameYUYVToJPEG) {
+    const auto camera = Nan::ObjectWrap::Unwrap<Camera>(info.Holder())->camera;
+    //auto jpegInfo = tjYUYVtoJPEG(camera->head.start, camera->width, camera->height);
+    auto jpegInfo = compressYUYVtoJPEG(camera->head.start, camera->width, camera->height);
+    const auto size = jpegInfo.first;
+    const auto jpeg = jpegInfo.second;
+    const auto flag = v8::ArrayBufferCreationMode::kInternalized;
+    auto buf = v8::ArrayBuffer::New(info.GetIsolate(), jpeg, size, flag);
     auto array = v8::Uint8Array::New(buf, 0, size);
     info.GetReturnValue().Set(array);
   }
@@ -434,8 +505,8 @@ namespace {
     Nan::SetPrototypeMethod(ctor, "stop", Stop);
     Nan::SetPrototypeMethod(ctor, "capture", Capture);
     Nan::SetPrototypeMethod(ctor, "frameRaw", FrameRaw);
-    Nan::SetPrototypeMethod(ctor, "toYUYV", FrameRaw);
     Nan::SetPrototypeMethod(ctor, "toRGB", FrameYUYVToRGB);
+    Nan::SetPrototypeMethod(ctor, "toJPEG", FrameYUYVToJPEG);
     Nan::SetPrototypeMethod(ctor, "configGet", ConfigGet);
     Nan::SetPrototypeMethod(ctor, "configSet", ConfigSet);
     Nan::SetPrototypeMethod(ctor, "controlGet", ControlGet);
