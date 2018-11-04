@@ -32,7 +32,9 @@
     },
     "scripts": {
         "test": "node test.js",
-        "make-c-examples": "make -f c-examples.makefile"
+        "make-c-examples": "make -f c-examples.makefile",
+        "build:dev": "node-gyp build --debug",
+        "build": "node-gyp build"
     },
     "os": [
         "linux"

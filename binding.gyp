@@ -11,7 +11,8 @@
             [ 'target_arch == "x64"', {
                 "link_settings": {
                     "libraries": [
-                        "/opt/libjpeg-turbo/lib64/libjpeg.a"
+                        "/opt/libjpeg-turbo/lib64/libjpeg.a",
+                        "/opt/libjpeg-turbo/lib64/libturbojpeg.a"
                     ]
                 },
             }],
@@ -30,11 +31,11 @@
                 },
             }],
         ],
-        "cflags": ["-Wall", "-Wextra", "-pedantic", "-O3"],
+        "cflags": ["-Wall", "-Wextra", "-pedantic", "-O3", "-Wunused-function", "-Wunused-parameter"],
         "xcode_settings": {
     	    "OTHER_CPLUSPLUSFLAGS": ["-std=c++14"],
         },
-        "cflags_c": ["-std=c11", "-Wunused-parameter"], 
+        "cflags_c": ["-std=c11"],
         "cflags_cc": ["-std=c++14"]
     }]
 }
