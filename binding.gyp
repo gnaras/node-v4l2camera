@@ -20,6 +20,7 @@
                 "link_settings": {
                     "libraries": [
                         "/opt/libjpeg-turbo/lib32/libjpeg.a"
+                        "/opt/libjpeg-turbo/lib32/libturbojpeg.a"
                     ]
                 },
             }],
@@ -27,6 +28,7 @@
                 "link_settings": {
                     "libraries": [
                         "/opt/libjpeg-turbo/lib32/libjpeg.a"
+                        "/opt/libjpeg-turbo/lib32/libturbojpeg.a"
                     ]
                 },
             }],
