@@ -20,25 +20,26 @@ typedef struct {
 } yuvSplitStruct;
 
 #ifdef __ARM_NEON
+__attribute__((optimize("O1")))
 void splitYuvPlanes(yuvSplitStruct* yuvStruct) {
   __asm__ volatile(
-              "PUSH {r4}\n"                            /* Save callee-save registers R4 and R5 on the stack */
-              "PUSH {r5}\n"                            /* r1 is the pointer to the input structure ( r0 is 'this' because c++ ) */
-              "ldr r0 , [r1]\n"                        /* reuse r0 scratch register for the address of our frame input */
-              "ldr r2 , [r1, #4]\n"                    /* use r2 scratch register to store the size in bytes of the YUYV frame */
-              "ldr r3 , [r1, #8]\n"                    /* use r3 scratch register to store the destination Y plane address */
-              "ldr r4 , [r1, #12]\n"                   /* use r4 register to store the destination U plane address */
-              "ldr r5 , [r1, #16]\n"                   /* use r5 register to store the destination V plane address */
-                  "mov r2, r2, lsr #5\n"               /* Divide number of bytes by 32 because we process 16 pixels at a time */
-                  "loopYUYV:\n"
-                      "vld4.8 {d0-d3}, [r0]!\n"        /* Load 8 YUYV elements from our frame into d0-d3, increment frame pointer */
-                      "vst2.8 {d0,d2}, [r3]!\n"        /* Store both Y elements into destination y plane, increment plane pointer */
-                      "vst1.8 {d1}, [r4]!\n"           /* Store U element into destination u plane, increment plane pointer */
-                      "vst1.8 {d3}, [r5]!\n"           /* Store V element into destination v plane, increment plane pointer */
-                      "subs r2, r2, #1\n"              /* Decrement the loop counter */
-                  "bgt loopYUYV\n"                     /* Loop until entire frame is processed */
-              "POP {r5}\n"                             /* Restore callee-save registers */
-              "POP {r4}\n"
+          "PUSH {r4}\n"                     /* Save callee-save registers R4 and R5 on the stack */
+          "PUSH {r5}\n"                     /* r1 is the pointer to the input structure ( r0 is 'this' because c++ ) */
+          "ldr r1 , [r0]\n"                 /* reuse r0 scratch register for the address of our frame input */
+          "ldr r2 , [r0, #4]\n"             /* use r2 scratch register to store the size in bytes of the YUYV frame */
+          "ldr r3 , [r0, #8]\n"             /* use r3 scratch register to store the destination Y plane address */
+          "ldr r4 , [r0, #12]\n"            /* use r4 register to store the destination U plane address */
+          "ldr r5 , [r0, #16]\n"            /* use r5 register to store the destination V plane address */
+              "mov r2, r2, lsr #5\n"        /* Divide number of bytes by 32 because we process 16 pixels at a time */
+              "loopYUYV:\n"
+                  "vld4.8 {d0-d3}, [r1]!\n" /* Load 8 YUYV elements from our frame into d0-d3, increment frame pointer */
+                  "vst2.8 {d0,d2}, [r3]!\n" /* Store both Y elements into destination y plane, increment plane pointer */
+                  "vst1.8 {d1}, [r4]!\n"    /* Store U element into destination u plane, increment plane pointer */
+                  "vst1.8 {d3}, [r5]!\n"    /* Store V element into destination v plane, increment plane pointer */
+                  "subs r2, r2, #1\n"       /* Decrement the loop counter */
+              "bgt loopYUYV\n"              /* Loop until entire frame is processed */
+          "POP {r5}\n"                      /* Restore callee-save registers */
+          "POP {r4}\n"
   );
 }
 #else
@@ -65,6 +66,7 @@ void splitYuvPlanes(yuvSplitStruct* yuvStruct) {
     v++;
     data++;
   }
+  std::cout << ".";
 }
 #endif
 
@@ -94,7 +96,7 @@ auto tjYUYVtoJPEG(const uint8_t* input, const int width, const int height) {
   unsigned char* dstBuf = nullptr;
   unsigned long dstSize = 0;
   tjCompressFromYUV(handle, s_yuvSplit.y_plane, width, 4/*pad*/, height, TJSAMP_422, 
-                      &dstBuf, &dstSize, 50/*jpegQual*/, TJFLAG_FASTDCT);
+                      &dstBuf, &dstSize, 70/*jpegQual*/, TJFLAG_FASTDCT);
   tjDestroy(handle);
   return std::make_pair(dstSize, dstBuf);
 }

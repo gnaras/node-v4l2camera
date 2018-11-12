@@ -20,7 +20,7 @@ var server = http.createServer(function (req, res) {
         return;
     }
     if (req.url.match(/^\/.+\.yuv$/)) {
-	var buf = Buffer(cam.toYUYV());
+	var buf = Buffer(cam.toJPEG());
 	//var buf = Buffer(cam.toRGB());
         res.writeHead(200, {
             "content-type": "image/vnd-raw",
@@ -103,7 +103,7 @@ if (cam.configGet().formatName !== "YUYV") {
     console.log("YUYV camera required");
     process.exit(1);
 }
-cam.configSet({width: 352, height: 288});
+cam.configSet({width: 320, height: 240});
 cam.start();
 cam.capture(function loop() {
     cam.capture(loop);

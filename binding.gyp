@@ -26,9 +26,11 @@
             [ 'target_arch == "arm"', {
                 "link_settings": {
                     "libraries": [
-                        "/opt/libjpeg-turbo/lib32/libjpeg.a"
-                    ]
+                        "/opt/libjpeg-turbo/lib32/libjpeg.a",
+                        "/opt/libjpeg-turbo/lib32/libturbojpeg.a",
+                   ]
                 },
+		"cflags": ["-mfpu=neon"],
             }],
         ],
         "cflags": ["-Wall", "-Wextra", "-pedantic", "-O3", "-Wunused-function", "-Wunused-parameter"],
