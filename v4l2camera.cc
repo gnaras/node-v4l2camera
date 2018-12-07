@@ -7,10 +7,35 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <chrono>
 #include <jpeglib.h>
 #include <turbojpeg.h>
 
 namespace {
+
+class MicrosecondBlock {
+public:
+    MicrosecondBlock(std::string&& id) : m_id(std::move(id)) {
+        m_start = std::chrono::high_resolution_clock::now();
+        ++m_enter;
+    }
+    ~MicrosecondBlock() {
+        --m_enter;
+        auto elapsed = std::chrono::high_resolution_clock::now() - m_start;
+        auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+        for(int i = 0; i < m_enter; ++i) {
+            std::cout << "  ";
+        }
+        std::cout << "MSB " << m_id << " completed in " << microseconds << std::endl;
+    }
+
+private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
+    std::string m_id;
+    static int m_enter;
+};
+int MicrosecondBlock::m_enter = 0;
+
 typedef struct {
     const uint8_t* input_data;
     uint32_t input_size;
@@ -164,6 +189,8 @@ private:
   static NAN_METHOD(FrameRaw);
   static NAN_METHOD(FrameYUYVToRGB);
   static NAN_METHOD(FrameYUYVToJPEG);
+  static NAN_METHOD(AsyncYUYVToJPEG);
+  static NAN_METHOD(FrameYUYVToYUV);
   static NAN_METHOD(ConfigGet);
   static NAN_METHOD(ConfigSet);
   static NAN_METHOD(ControlGet);
@@ -272,6 +299,50 @@ void Camera::Watch(const Nan::FunctionCallbackInfo<v8::Value>& info,
   uv_poll_init(uv_default_loop(), handle, camera->fd);
   uv_poll_start(handle, UV_READABLE, cb);
 }
+
+class JPEGCompressWorker : public Nan::AsyncWorker {
+public:
+  JPEGCompressWorker(camera_t* camera, Nan::Callback* callback)
+    : m_camera(camera), Nan::AsyncWorker(callback) {
+  }
+
+  void Execute() override {
+    if (!m_camera->initialized) {
+      this->SetErrorMessage("Error: camera is not initialized.");
+      return;
+    }
+
+    auto jpegInfo = tjYUYVtoJPEG(m_camera->head.start, m_camera->width, m_camera->height);
+    m_bufferSize = jpegInfo.first;
+    m_buffer = jpegInfo.second;
+  }
+
+  void HandleOKCallback() override {
+    Nan::HandleScope scope;
+    // const auto flag = v8::ArrayBufferCreationMode::kInternalized;
+    // auto buf = v8::ArrayBuffer::New(info.GetIsolate(), m_buffer, m_bufferSize, flag);
+    // auto array = v8::Uint8Array::New(buf, 0, m_bufferSize);
+    auto array = Nan::NewBuffer(reinterpret_cast<char*>(m_buffer), m_bufferSize);
+    v8::Local<v8::Value> argv[] = {
+      Nan::Null(), // no error occured
+      array.ToLocalChecked()
+    };
+    Nan::Call(callback->GetFunction(), Nan::GetCurrentContext()->Global(), 2, argv);
+  }
+
+  void HandleErrorCallback() override {
+    Nan::HandleScope scope;
+    v8::Local<v8::Value> argv[] = {
+      Nan::New(this->ErrorMessage()).ToLocalChecked(), // return error message
+      Nan::Null()
+    };
+    Nan::Call(callback->GetFunction(), Nan::GetCurrentContext()->Global(), 2, argv);
+  }
+private:
+  camera_t* m_camera { nullptr };
+  unsigned char* m_buffer { nullptr };
+  unsigned long m_bufferSize { 0 };
+};
 
 //[methods]
 
@@ -499,6 +570,36 @@ NAN_METHOD(Camera::FrameYUYVToJPEG) {
   info.GetReturnValue().Set(array);
 }
 
+NAN_METHOD(Camera::AsyncYUYVToJPEG) {
+  if(!info[0]->IsFunction()) {
+    return Nan::ThrowError(Nan::New("expected arg 0: function callback").ToLocalChecked());
+  }
+  const auto camera = Nan::ObjectWrap::Unwrap<Camera>(info.Holder())->camera;
+  Nan::AsyncQueueWorker(new JPEGCompressWorker(
+    camera,
+    new Nan::Callback(info[0].As<v8::Function>())
+  ));
+}
+
+NAN_METHOD(Camera::FrameYUYVToYUV) {
+  const auto camera = Nan::ObjectWrap::Unwrap<Camera>(info.Holder())->camera;
+  yuvSplitStruct yuvSplit { nullptr, 0, nullptr, nullptr, nullptr };
+  ulong y_size = tjPlaneSizeYUV(0, camera->width, 0, camera->height, TJSAMP_422);
+  ulong chro_size = tjPlaneSizeYUV(1, camera->width, 0, camera->height, TJSAMP_422);
+  auto totalSize = y_size + (chro_size * 2);
+  yuvSplit.y_plane = new uint8_t[totalSize]();
+  yuvSplit.u_plane = &yuvSplit.y_plane[y_size];
+  yuvSplit.v_plane = &yuvSplit.u_plane[chro_size];
+  yuvSplit.input_data = camera->head.start;
+  yuvSplit.input_size = tjBufSizeYUV(camera->width, camera->height, TJSAMP_422);
+  splitYuvPlanes(&yuvSplit);
+  
+  const auto flag = v8::ArrayBufferCreationMode::kInternalized;
+  auto buf = v8::ArrayBuffer::New(info.GetIsolate(), yuvSplit.y_plane, totalSize, flag);
+  auto array = v8::Uint8Array::New(buf, 0, totalSize);
+  info.GetReturnValue().Set(array);
+}
+
 
 NAN_METHOD(Camera::ConfigGet) {
   const auto camera = Nan::ObjectWrap::Unwrap<Camera>(info.Holder())->camera;
@@ -586,6 +687,8 @@ NAN_MODULE_INIT(Camera::Init) {
   Nan::SetPrototypeMethod(ctor, "frameRaw", FrameRaw);
   Nan::SetPrototypeMethod(ctor, "toRGB", FrameYUYVToRGB);
   Nan::SetPrototypeMethod(ctor, "toJPEG", FrameYUYVToJPEG);
+  Nan::SetPrototypeMethod(ctor, "toJPEGAsync", AsyncYUYVToJPEG);
+  Nan::SetPrototypeMethod(ctor, "toYUV", FrameYUYVToYUV);
   Nan::SetPrototypeMethod(ctor, "configGet", ConfigGet);
   Nan::SetPrototypeMethod(ctor, "configSet", ConfigSet);
   Nan::SetPrototypeMethod(ctor, "controlGet", ControlGet);
