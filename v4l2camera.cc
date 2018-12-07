@@ -304,6 +304,11 @@ class JPEGCompressWorker : public Nan::AsyncWorker {
 public:
   JPEGCompressWorker(camera_t* camera, Nan::Callback* callback)
     : m_camera(camera), Nan::AsyncWorker(callback) {
+      m_isBusy = true;
+  }
+
+  static bool IsBusy() {
+    return m_isBusy;
   }
 
   void Execute() override {
@@ -328,6 +333,7 @@ public:
       array.ToLocalChecked()
     };
     Nan::Call(callback->GetFunction(), Nan::GetCurrentContext()->Global(), 2, argv);
+    m_isBusy = false;
   }
 
   void HandleErrorCallback() override {
@@ -337,12 +343,15 @@ public:
       Nan::Null()
     };
     Nan::Call(callback->GetFunction(), Nan::GetCurrentContext()->Global(), 2, argv);
+    m_isBusy = false;
   }
 private:
+  static bool m_isBusy;
   camera_t* m_camera { nullptr };
   unsigned char* m_buffer { nullptr };
   unsigned long m_bufferSize { 0 };
 };
+bool JPEGCompressWorker::m_isBusy = false;
 
 //[methods]
 
@@ -571,6 +580,9 @@ NAN_METHOD(Camera::FrameYUYVToJPEG) {
 }
 
 NAN_METHOD(Camera::AsyncYUYVToJPEG) {
+  if(JPEGCompressWorker::IsBusy()) {
+    return;
+  }
   if(!info[0]->IsFunction()) {
     return Nan::ThrowError(Nan::New("expected arg 0: function callback").ToLocalChecked());
   }
