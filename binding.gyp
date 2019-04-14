@@ -31,14 +31,14 @@
                         "/opt/libjpeg-turbo/lib32/libturbojpeg.a",
                    ]
                 },
-		"cflags": ["-mfpu=neon"],
+                "cflags": ["-mfpu=neon"],
             }],
         ],
         "cflags": ["-Wall", "-Wextra", "-pedantic", "-O3", "-Wunused-function", "-Wunused-parameter"],
         "xcode_settings": {
     	    "OTHER_CPLUSPLUSFLAGS": ["-std=c++14"],
         },
-        "cflags_c": ["-std=c11"],
+        "cflags_c": ["-std=c++14"],
         "cflags_cc": ["-std=c++14"]
     }]
 }
