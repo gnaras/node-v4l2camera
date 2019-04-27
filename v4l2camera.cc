@@ -91,7 +91,6 @@ void splitYuvPlanes(yuvSplitStruct* yuvStruct) {
     v++;
     data++;
   }
-  std::cout << ".";
 }
 #endif
 
