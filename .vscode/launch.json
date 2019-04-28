@@ -12,7 +12,7 @@
             "preLaunchTask": "npm: build:dev",
             "args" : "${workspaceFolder}/test.js",
             "env": {
-                "DEBUG": "false",
+                "DEBUG": "true",
                 "PORT": "8080"
             }
         }
