@@ -9,4 +9,4 @@ list-formats
 result*.png
 result*.jpg
 
-.vscode
+.vscode/ipch/

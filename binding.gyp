@@ -35,10 +35,7 @@
             }],
         ],
         "cflags": ["-Wall", "-Wextra", "-pedantic", "-O3", "-Wunused-function", "-Wunused-parameter"],
-        "xcode_settings": {
-    	    "OTHER_CPLUSPLUSFLAGS": ["-std=c++14"],
-        },
-        "cflags_c": ["-std=c++14"],
+        "cflags_c": [""],
         "cflags_cc": ["-std=c++14"]
     }]
 }

@@ -74,7 +74,7 @@ void splitYuvPlanes(yuvSplitStruct* yuvStruct) {
   auto y = yuvStruct->y_plane;
   auto u = yuvStruct->u_plane;
   auto v = yuvStruct->v_plane;
-  for ( int c = 0 ; c < ( size - 4 ) ; c+=4 ) {
+  for ( size_t c = 0 ; c < ( size - 4 ) ; c+=4 ) {
     *y = *data; // Y0
     y++;
     data++;
@@ -205,6 +205,12 @@ private:
   
   Camera();
   ~Camera();
+
+  static inline Nan::Persistent<v8::Function>& constructor() {
+    static Nan::Persistent<v8::Function> my_constructor;
+    return my_constructor;
+  }
+
   camera_t* camera;
 };
 
@@ -467,9 +473,10 @@ static v8::Local<v8::Object> cameraFormats(const camera_t* camera) {
 NAN_METHOD(Camera::New) {
   if (!info.IsConstructCall()) {
     // [NOTE] generic recursive call with `new`
+    v8::Local<v8::Function> cons = Nan::New(constructor());
     std::vector<v8::Local<v8::Value>> args(info.Length());
     for (auto i = std::size_t{0}; i < args.size(); ++i) args[i] = info[i];
-    auto inst = Nan::NewInstance(info.Callee(), args.size(), args.data());
+    auto inst = Nan::NewInstance(cons, args.size(), args.data());
     if (!inst.IsEmpty()) info.GetReturnValue().Set(inst.ToLocalChecked());
     return;
   }
@@ -682,7 +689,6 @@ Camera::~Camera() {
     delete ctx;
   }
 }
-
 
 //[module init]
 NAN_MODULE_INIT(Camera::Init) {

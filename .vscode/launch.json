@@ -5,12 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(lldb) turretrc webserver Launch",
+            "name": "(lldb) v4l2camera webserver Launch",
             "type": "lldb",
             "request": "launch",
             "program": "/usr/bin/node",
             "preLaunchTask": "npm: build:dev",
-            "args" : "${workspaceFolder}/../turretRC/ChipServer/webserver.js",
+            "args" : "${workspaceFolder}/test.js",
             "env": {
                 "DEBUG": "false",
                 "PORT": "8080"
