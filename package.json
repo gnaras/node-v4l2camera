@@ -24,8 +24,8 @@
         "url": "http://github.com/bellbind/node-v4l2camera.git"
     },
     "devDependencies": {
-        "pngjs": "*",
-        "jpeg-js": "*"
+        "jpeg-js": "^0.3.6",
+        "pngjs": "^3.4.0"
     },
     "engines": {
         "node": ">=4.0.0"
@@ -40,7 +40,7 @@
         "linux"
     ],
     "dependencies": {
-        "nan": ">=2.3.0"
+        "nan": "^2.14.0"
     },
     "contributors": [
         "Tim Cameron Ryan <id@timryan.org> (https://github.com/tcr)",
