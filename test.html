@@ -1,0 +1,74 @@
+<html>
+
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <style>
+        * {
+            background-color: rgb(20, 20, 20);
+            font-size: 1em;
+            font-family: sans-serif;
+            color: rgb(220, 220, 220)
+        }
+        div#container {
+            display: inline-block;
+            box-shadow: 1px 1px 100px #777;
+            margin:0 auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <canvas id="stream"></canvas>
+    </div>
+</body>
+
+<script type="text/javascript">
+    var ws = null;
+    var stream = document.getElementById("stream");
+    var context = stream.getContext("2d");
+    var frame64 = null;
+
+    $(document).ready(function () {
+        openCapture();
+    });
+
+    function drawFrame() {
+        var img = new Image();
+        img.onload = function () {
+            context.clearRect(0, 0, stream.width, stream.height);
+            context.drawImage(img, 0, 0, stream.width, stream.height);
+        };
+        img.src = "data:image/jpg;base64," + frame64;
+    };
+
+    function openCapture() {
+        ws = new WebSocket("ws://" + window.location.host);
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: "size"
+            }));
+        };
+
+        ws.onerror = function (e) {
+            console.log(e);
+        };
+
+        ws.onmessage = function (message) {
+            var data = JSON.parse(message.data);
+            switch (data.type) {
+            case "frame":
+                if(data.frame64) {
+                    frame64 = data.frame64;
+                }
+                drawFrame();
+                break;
+            case "size":
+                stream.width = data.width;
+                stream.height = data.height;
+            }
+        };
+    };
+</script>
+
+</html>
