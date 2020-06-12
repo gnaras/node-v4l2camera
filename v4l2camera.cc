@@ -136,16 +136,15 @@ auto compressYUYVtoJPEG(const uint8_t* input, const int width, const int height)
 
   cinfo.err = jpeg_std_error(&jerr);
   jpeg_create_compress(&cinfo);
-  jpeg_mem_dest(&cinfo, &outbuffer, &outlen);
-
+  jpeg_set_defaults(&cinfo);
   // jrow is a libjpeg row of samples array of 1 row pointer
   cinfo.image_width = width & -1;
   cinfo.image_height = height & -1;
   cinfo.input_components = 3;
   cinfo.in_color_space = JCS_YCbCr; //libJPEG expects YUV 3bytes, 24bit
-
-  jpeg_set_defaults(&cinfo);
   jpeg_set_quality(&cinfo, 50, TRUE);
+
+  jpeg_mem_dest(&cinfo, &outbuffer, &outlen);
   jpeg_start_compress(&cinfo, TRUE);
 
   std::vector<uint8_t> tmprowbuf(width * 3);
