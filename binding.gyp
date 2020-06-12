@@ -2,7 +2,7 @@
 {
     "targets": [{
         "target_name": "v4l2camera", 
-        "sources": ["capture.c", "v4l2camera.cc"],
+        "sources": ["capture.c", "jpegEncode.cc", "v4l2camera.cc"],
         "include_dirs" : [
             "<!(node -e \"require('nan')\")",
             "/opt/libjpeg-turbo/include"
